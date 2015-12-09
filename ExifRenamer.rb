@@ -27,12 +27,11 @@ def ensureNewFileName(dirname, fname)
 end
 
 def ensureDateOrg(fname)
-  open("|exiftool -#{TAG_DEFAULT} -#{TAG_IMOVIE} -s3 -d '#{DATE_FORMAT}' \"#{fname}\"").read.sub(/\n/,'')
 end
 
 def moveFilenameByTag(fname)
   return unless File.exist?(fname)
-  dateOrg = ensureDateOrg(fname)
+  dateOrg = open("|exiftool -#{TAG_DEFAULT} -#{TAG_IMOVIE} -s3 -d '#{DATE_FORMAT}' \"#{fname}\"").read.sub(/\n/,'')
   dirname = File.dirname(fname)
   basename = File.basename(fname)
   matched = basename.match(/(.*)\.(.*)/)
@@ -47,7 +46,7 @@ end
 
 def writeTagByFilename(fname)
   return unless File.exist?(fname)
-  dateOrg = ensureDateOrg(fname)
+  dateOrg = open("|exiftool -#{TAG_DEFAULT} -s3 -d '#{DATE_FORMAT}' \"#{fname}\"").read.sub(/\n/,'')
   dirname = File.dirname(fname)
   basename = File.basename(fname)
   matched = basename.match(/(.*)\.(.*)/)
@@ -58,16 +57,6 @@ def writeTagByFilename(fname)
     echo(cmd)
     system(cmd) unless $DRYRUN
   end
-  begin
-    dateNew = Time.parse(baseDate).strftime('%Y-%m-%d_%H-%M-%S')
-    unless dateNew == baseDate
-      newFileName = ensureNewFileName(dirname, "#{dateNew}#{File.extname(fname)}")
-      cmd = "mv \"#{fname}\" \"#{newFileName}\""
-      #echo(cmd)
-      #system(cmd) unless $DRYRUN
-    end
-  rescue Exception => e
-  end
 end
 
 OptionParser.new do |opt|
@@ -77,7 +66,7 @@ OptionParser.new do |opt|
     opt.on("-q","--quiet","quiet(less output)") {|a| $QUIET=true }
     opt.on("-m","--move","move file by EXIF #{TAG_DEFAULT} Info") {|a| args[:m] = true }
     opt.on("-w","--write","write EXIF #{TAG_DEFAULT} Info by filename") {|a| args[:w] = true }
-    opt.on("-r","--recursive","find file recursively") {|a| args[:r] = true }
+    opt.on("-r","--recursive","find files recursively") {|a| args[:r] = true }
     opt.parse!(ARGV)
     raise OptionParser::MissingArgument, "Specify rewrite or rename" if (args[:w] and args[:m]) or (!args[:w] and !args[:m])
     ARGV.each do |fname|
