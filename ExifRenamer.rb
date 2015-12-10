@@ -26,7 +26,16 @@ def ensureNewFileName(dirname, fname)
   return File.join(dirname, fname)
 end
 
-def ensureDateOrg(fname)
+def compareFilenameByTag(fname)
+  return unless File.exist?(fname)
+  dateOrg = open("|exiftool -#{TAG_DEFAULT} -#{TAG_IMOVIE} -s3 -d '#{DATE_FORMAT}' \"#{fname}\"").read.sub(/\n/,'')
+  dirname = File.dirname(fname)
+  basename = File.basename(fname)
+  matched = basename.match(/(.*)\.(.*)/)
+  baseDate, baseSuffix = matched[1..2] if matched
+  unless baseDate == dateOrg
+    STDOUT.puts("#{fname}\t#{dateOrg}")
+  end
 end
 
 def moveFilenameByTag(fname)
@@ -64,18 +73,24 @@ OptionParser.new do |opt|
   begin
     opt.on("-d","--dry-run","do not actually change") {|a| $DRYRUN=true }
     opt.on("-q","--quiet","quiet(less output)") {|a| $QUIET=true }
-    opt.on("-m","--move","move file by EXIF #{TAG_DEFAULT} Info") {|a| args[:m] = true }
-    opt.on("-w","--write","write EXIF #{TAG_DEFAULT} Info by filename") {|a| args[:w] = true }
-    opt.on("-r","--recursive","find files recursively") {|a| args[:r] = true }
+    opt.on("-c","--compare","compare file name and EXIF #{TAG_DEFAULT} Info") {|a| args[:command] = :compare }
+    opt.on("-m","--move","move file by EXIF #{TAG_DEFAULT} Info") {|a| args[:command] = :move }
+    opt.on("-w","--write","write EXIF #{TAG_DEFAULT} Info by filename") {|a| args[:command] = :write }
+    opt.on("-r","--recursive","find files recursively") {|a| args[:recursive] = true }
     opt.parse!(ARGV)
-    raise OptionParser::MissingArgument, "Specify rewrite or rename" if (args[:w] and args[:m]) or (!args[:w] and !args[:m])
+    case
+    when args[:command] == :compare
+      command = method(:compareFilenameByTag)
+    when args[:command] == :move
+      command = method(:moveFilenameByTag)
+    when args[:command] == :write
+      command = method(:writeTagByFilename)
+    else
+      raise OptionParser::MissingArgument, "Specify -c or -m or -w"
+    end
     ARGV.each do |fname|
-      Dir.glob(args[:r] ? "#{fname}/**/*.*" : fname).each do |path|
-        if args[:m]
-          moveFilenameByTag(path)
-        elsif args[:w]
-          writeTagByFilename(path)
-        end
+      Dir.glob(args[:recursive] ? "#{fname}/**/*.*" : fname).each do |path|
+        command.call(path)
       end
     end
   rescue SystemExit => e
