@@ -21,6 +21,7 @@ end
 DATE_FORMAT="%Y-%m-%d_%H-%M-%S"
 TAG_DEFAULT="DateTimeOriginal"
 TAG_IMOVIE="CreationDate-jpn-JP"
+TAG_MP4="MediaCreateDate"
 
 def ensureNewFileName(dirname, fname)
   return File.join(dirname, fname)
@@ -28,7 +29,7 @@ end
 
 def compareFilenameByTag(fname)
   return unless File.exist?(fname)
-  dateOrg = open("|exiftool -#{TAG_DEFAULT} -#{TAG_IMOVIE} -s3 -d '#{DATE_FORMAT}' \"#{fname}\"").read.sub(/\n/,'')
+  dateOrg = open("|exiftool -#{TAG_DEFAULT} -#{TAG_IMOVIE} -#{TAG_MP4} -s3 -d '#{DATE_FORMAT}' \"#{fname}\"").read.sub(/\n/,'')
   dirname = File.dirname(fname)
   basename = File.basename(fname)
   matched = basename.match(/(.*)\.(.*)/)
@@ -40,7 +41,7 @@ end
 
 def moveFilenameByTag(fname)
   return unless File.exist?(fname)
-  dateOrg = open("|exiftool -#{TAG_DEFAULT} -#{TAG_IMOVIE} -s3 -d '#{DATE_FORMAT}' \"#{fname}\"").read.sub(/\n/,'')
+  dateOrg = open("|exiftool -#{TAG_DEFAULT} -#{TAG_IMOVIE} -#{TAG_MP4} -s3 -d '#{DATE_FORMAT}' \"#{fname}\"").read.sub(/\n/,'')
   dirname = File.dirname(fname)
   basename = File.basename(fname)
   matched = basename.match(/(.*)\.(.*)/)
@@ -61,7 +62,6 @@ def writeTagByFilename(fname)
   matched = basename.match(/(.*)\.(.*)/)
   baseDate, baseSuffix = matched[1..2] if matched
   unless dateOrg == baseDate
-    # filename is stronger than tag info
     cmd = "exiftool -d '#{DATE_FORMAT}' -#{TAG_DEFAULT}=\"#{baseDate}\" -overwrite_original \"#{fname}\""
     echo(cmd)
     system(cmd) unless $DRYRUN
