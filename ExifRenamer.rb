@@ -27,9 +27,11 @@ def ensureNewFileName(dirname, fname)
   return File.join(dirname, fname)
 end
 
-def compareFilenameByTag(fname)
+def compareFilenameByTag(fname, timeShift)
   return unless File.exist?(fname)
-  dateOrg = open("|exiftool -#{TAG_DEFAULT} -#{TAG_IMOVIE} -#{TAG_MP4} -s3 -d '#{DATE_FORMAT}' \"#{fname}\"").read.sub(/\n/,'')
+  exiftool = "exiftool -#{TAG_DEFAULT} -#{TAG_IMOVIE} -#{TAG_MP4} -s3 -d '#{DATE_FORMAT}' -globalTimeShift #{timeShift||0} \"#{fname}\""
+  # echo exiftool
+  dateOrg = open("|#{exiftool}").read.sub(/\n/,'')
   dirname = File.dirname(fname)
   basename = File.basename(fname)
   matched = basename.match(/(.*)\.(.*)/)
@@ -39,9 +41,11 @@ def compareFilenameByTag(fname)
   end
 end
 
-def moveFilenameByTag(fname)
+def moveFilenameByTag(fname, timeShift)
   return unless File.exist?(fname)
-  dateOrg = open("|exiftool -#{TAG_DEFAULT} -#{TAG_IMOVIE} -#{TAG_MP4} -s3 -d '#{DATE_FORMAT}' \"#{fname}\"").read.sub(/\n/,'')
+  exiftool = "exiftool -#{TAG_DEFAULT} -#{TAG_IMOVIE} -#{TAG_MP4} -s3 -d '#{DATE_FORMAT}' -globalTimeShift #{timeShift||0} \"#{fname}\""
+  # echo exiftool
+  dateOrg = open("|#{exiftool}").read.sub(/\n/,'')
   dirname = File.dirname(fname)
   basename = File.basename(fname)
   matched = basename.match(/(.*)\.(.*)/)
@@ -54,9 +58,11 @@ def moveFilenameByTag(fname)
   end
 end
 
-def writeTagByFilename(fname)
+def writeTagByFilename(fname, timeShift)
   return unless File.exist?(fname)
-  dateOrg = open("|exiftool -#{TAG_DEFAULT} -s3 -d '#{DATE_FORMAT}' \"#{fname}\"").read.sub(/\n/,'')
+  exiftool = "exiftool -#{TAG_DEFAULT} -s3 -d '#{DATE_FORMAT}' -globalTimeShift #{timeShift||0} \"#{fname}\""
+  # echo exiftool
+  dateOrg = open("|#{exiftool}").read.sub(/\n/,'')
   dirname = File.dirname(fname)
   basename = File.basename(fname)
   matched = basename.match(/(.*)\.(.*)/)
@@ -77,6 +83,7 @@ OptionParser.new do |opt|
     opt.on("-m","--move","move file by EXIF #{TAG_DEFAULT} Info") {|a| args[:command] = :move }
     opt.on("-w","--write","write EXIF #{TAG_DEFAULT} Info by filename") {|a| args[:command] = :write }
     opt.on("-r","--recursive","find files recursively") {|a| args[:recursive] = true }
+    opt.on("-t VALUE","--time-shift","shift time when reading") {|a| args[:timeShift] = a }
     opt.parse!(ARGV)
     case
     when args[:command] == :compare
@@ -90,7 +97,7 @@ OptionParser.new do |opt|
     end
     ARGV.each do |fname|
       Dir.glob(args[:recursive] ? "#{fname}/**/*.*" : fname).each do |path|
-        command.call(path)
+        command.call(path, args[:timeShift])
       end
     end
   rescue SystemExit => e
