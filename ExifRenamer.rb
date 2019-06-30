@@ -19,6 +19,7 @@ def echo(message = "")
 end
 
 DATE_FORMAT="%Y-%m-%d_%H-%M-%S"
+TAG_CREATE="CreateDate"
 TAG_DEFAULT="DateTimeOriginal"
 TAG_IMOVIE="CreationDate-jpn-JP"
 TAG_MP4="MediaCreateDate"
@@ -27,30 +28,30 @@ def ensureNewFileName(dirname, fname)
   return File.join(dirname, fname)
 end
 
-def compareFilenameByTag(fname, timeShift)
+def compareFilenameByTag(fname, timeShift, force)
   return unless File.exist?(fname)
-  exiftool = "exiftool -#{TAG_DEFAULT} -#{TAG_IMOVIE} -#{TAG_MP4} -s3 -d '#{DATE_FORMAT}' -globalTimeShift #{timeShift||0} \"#{fname}\""
+  exiftool = "exiftool -#{TAG_DEFAULT} -#{TAG_IMOVIE} -#{TAG_MP4} -s3 -d '#{DATE_FORMAT}' -globalTimeShift #{timeShift||0} \"#{fname}\"|head -1"
   # echo exiftool
   dateOrg = open("|#{exiftool}").read.sub(/\n/,'')
   dirname = File.dirname(fname)
   basename = File.basename(fname)
   matched = basename.match(/(.*)\.(.*)/)
   baseDate, baseSuffix = matched[1..2] if matched
-  unless baseDate == dateOrg
+  if force || baseDate != dateOrg
     STDOUT.puts("#{fname}\t#{dateOrg}")
   end
 end
 
-def moveFilenameByTag(fname, timeShift)
+def moveFilenameByTag(fname, timeShift, force)
   return unless File.exist?(fname)
-  exiftool = "exiftool -#{TAG_DEFAULT} -#{TAG_IMOVIE} -#{TAG_MP4} -s3 -d '#{DATE_FORMAT}' -globalTimeShift #{timeShift||0} \"#{fname}\""
+  exiftool = "exiftool -#{TAG_DEFAULT} -#{TAG_IMOVIE} -#{TAG_MP4} -s3 -d '#{DATE_FORMAT}' -globalTimeShift #{timeShift||0} \"#{fname}\"|head -1"
   # echo exiftool
   dateOrg = open("|#{exiftool}").read.sub(/\n/,'')
   dirname = File.dirname(fname)
   basename = File.basename(fname)
   matched = basename.match(/(.*)\.(.*)/)
   baseDate, baseSuffix = matched[1..2] if matched
-  unless dateOrg == baseDate
+  if force || dateOrg != baseDate
     newFileName = ensureNewFileName(dirname, "#{dateOrg}#{File.extname(fname)}")
     cmd = "mv \"#{fname}\" \"#{newFileName}\""
     echo(cmd)
@@ -58,17 +59,17 @@ def moveFilenameByTag(fname, timeShift)
   end
 end
 
-def writeTagByFilename(fname, timeShift)
+def writeTagByFilename(fname, timeShift, force)
   return unless File.exist?(fname)
-  exiftool = "exiftool -#{TAG_DEFAULT} -s3 -d '#{DATE_FORMAT}' -globalTimeShift #{timeShift||0} \"#{fname}\""
+  exiftool = "exiftool -#{TAG_DEFAULT} -s3 -d '#{DATE_FORMAT}' -globalTimeShift #{timeShift||0} \"#{fname}\"|head -1"
   # echo exiftool
   dateOrg = open("|#{exiftool}").read.sub(/\n/,'')
   dirname = File.dirname(fname)
   basename = File.basename(fname)
   matched = basename.match(/(.*)\.(.*)/)
   baseDate, baseSuffix = matched[1..2] if matched
-  unless dateOrg == baseDate
-    cmd = "exiftool -d '#{DATE_FORMAT}' -#{TAG_DEFAULT}=\"#{baseDate}\" -overwrite_original \"#{fname}\""
+  if force || dateOrg != baseDate
+    cmd = "exiftool -d '#{DATE_FORMAT}' -#{TAG_DEFAULT}=\"#{baseDate}\" -#{TAG_CREATE}=\"#{baseDate}\" -overwrite_original \"#{fname}\""
     echo(cmd)
     system(cmd) unless $DRYRUN
   end
@@ -84,6 +85,7 @@ OptionParser.new do |opt|
     opt.on("-w","--write","write EXIF #{TAG_DEFAULT} Info by filename") {|a| args[:command] = :write }
     opt.on("-r","--recursive","find files recursively") {|a| args[:recursive] = true }
     opt.on("-t VALUE","--time-shift","shift time when reading") {|a| args[:timeShift] = a }
+    opt.on("-f","--force","force") {|a| args[:force] = true }
     opt.parse!(ARGV)
     case
     when args[:command] == :compare
@@ -97,7 +99,7 @@ OptionParser.new do |opt|
     end
     ARGV.each do |fname|
       Dir.glob(args[:recursive] ? "#{fname}/**/*.*" : fname).each do |path|
-        command.call(path, args[:timeShift])
+        command.call(path, args[:timeShift], args[:force])
       end
     end
   rescue SystemExit => e
