@@ -47,6 +47,9 @@ def moveFilenameByTag(fname, timeShift, force)
   exiftool = "exiftool -#{TAG_DEFAULT} -#{TAG_IMOVIE} -#{TAG_MP4} -s3 -d '#{DATE_FORMAT}' -globalTimeShift #{timeShift||0} \"#{fname}\"|head -1"
   # echo exiftool
   dateOrg = open("|#{exiftool}").read.sub(/\n/,'')
+  if dateOrg.empty?
+    dateOrg = File::Stat.new(fname).ctime.strftime("%Y-%m-%d_%H-%M-%S")
+  end
   dirname = File.dirname(fname)
   basename = File.basename(fname)
   matched = basename.match(/(.*)\.(.*)/)
