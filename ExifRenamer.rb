@@ -78,6 +78,16 @@ def writeTagByFilename(fname, timeShift, force)
   end
 end
 
+def moveFilenameByTime(fname, time)
+  return unless File.exist?(fname)
+  dirname = File.dirname(fname)
+  newFileName = ensureNewFileName(dirname, "#{time.strftime(DATE_FORMAT)}#{File.extname(fname)}")
+  cmd = "mv \"#{fname}\" \"#{newFileName}\""
+  echo(cmd)
+  system(cmd) unless $DRYRUN
+  writeTagByFilename(newFileName, 0, true)
+end
+
 OptionParser.new do |opt|
   args = {}
   begin
@@ -89,6 +99,10 @@ OptionParser.new do |opt|
     opt.on("-r","--recursive","find files recursively") {|a| args[:recursive] = true }
     opt.on("-t VALUE","--time-shift","shift time when reading") {|a| args[:timeShift] = a }
     opt.on("-f","--force","force") {|a| args[:force] = true }
+    opt.on("-b VALUE","--base-time", "rename sequentially from base time") {|a|
+      args[:command] = :baseTime
+      args[:baseTime] = a
+    }
     opt.parse!(ARGV)
     case
     when args[:command] == :compare
@@ -97,12 +111,23 @@ OptionParser.new do |opt|
       command = method(:moveFilenameByTag)
     when args[:command] == :write
       command = method(:writeTagByFilename)
+    when args[:command] == :baseTime
+      command = method(:moveFilenameByTime)
     else
-      raise OptionParser::MissingArgument, "Specify -c or -m or -w"
+      raise OptionParser::MissingArgument, "Specify -c or -m or -w or -b"
     end
-    ARGV.each do |fname|
-      Dir.glob(args[:recursive] ? "#{fname}/**/*.*" : fname).each do |path|
-        command.call(path, args[:timeShift], args[:force])
+    if args[:command] == :baseTime
+      ARGV.each do |fname|
+        baseTime = Time.parse(args[:baseTime])
+        Dir.glob(args[:recursive] ? "#{fname}/**/*.*" : fname).each_with_index do |path,i|
+          command.call(path, baseTime + i*60)
+        end
+      end
+    else
+      ARGV.each do |fname|
+        Dir.glob(args[:recursive] ? "#{fname}/**/*.*" : fname).each do |path|
+          command.call(path, args[:timeShift], args[:force]) if File.file?
+        end
       end
     end
   rescue SystemExit => e
