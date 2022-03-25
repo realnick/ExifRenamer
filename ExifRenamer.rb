@@ -126,7 +126,7 @@ OptionParser.new do |opt|
     else
       ARGV.each do |fname|
         Dir.glob(args[:recursive] ? "#{fname}/**/*.*" : fname).each do |path|
-          command.call(path, args[:timeShift], args[:force]) if File.file?
+          command.call(path, args[:timeShift], args[:force])
         end
       end
     end
