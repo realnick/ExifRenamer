@@ -55,7 +55,7 @@ def moveFilenameByTag(fname, timeShift, force)
   matched = basename.match(/(.*)\.(.*)/)
   baseDate, baseSuffix = matched[1..2] if matched
   if force || dateOrg != baseDate
-    newFileName = ensureNewFileName(dirname, "#{dateOrg}#{File.extname(fname)}")
+    newFileName = ensureNewFileName(dirname, "#{dateOrg}#{File.extname(fname).downcase}")
     cmd = "mv \"#{fname}\" \"#{newFileName}\""
     echo(cmd)
     system(cmd) unless $DRYRUN
@@ -81,7 +81,7 @@ end
 def moveFilenameByTime(fname, time)
   return unless File.exist?(fname)
   dirname = File.dirname(fname)
-  newFileName = ensureNewFileName(dirname, "#{time.strftime(DATE_FORMAT)}#{File.extname(fname)}")
+  newFileName = ensureNewFileName(dirname, "#{time.strftime(DATE_FORMAT)}#{File.extname(fname).downcase}")
   cmd = "mv \"#{fname}\" \"#{newFileName}\""
   echo(cmd)
   system(cmd) unless $DRYRUN
