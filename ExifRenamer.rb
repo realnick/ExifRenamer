@@ -70,7 +70,7 @@ def setFileCreationTimeByFilename(fname, timeShift, force)
   basename = File.basename(fname)
   if matched = DATE_REGEX.match(basename)
     ctime = "#{matched[2]}/#{matched[3]}/#{matched[1]} #{matched[4]}:#{matched[5]}:#{matched[6]}"
-    cmd = "setfile -d \"#{ctime}\" \"#{fname}\""
+    cmd = "setfile -d \"#{ctime}\" \"#{fname}\"; setfile -m \"#{ctime}\" \"#{fname}\""
     echo(cmd)
     system(cmd) unless $DRYRUN
   end
