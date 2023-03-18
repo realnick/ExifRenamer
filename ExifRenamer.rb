@@ -33,7 +33,7 @@ def moveFilenameByTag(fname, timeShift, force)
   return unless File.exist?(fname)
   exiftool = "exiftool -#{TAG_DEFAULT} -#{TAG_IMOVIE} -#{TAG_MP4} -s3 -d '#{DATE_FORMAT}' -globalTimeShift #{timeShift||0} \"#{fname}\"|head -1"
   # echo exiftool
-  dateOrg = open("|#{exiftool}").read.sub(/\n/,'')
+  dateOrg = open("|#{exiftool}").read.gsub(/[^\d\-_]/,'')
   if dateOrg.empty?
     dateOrg = File::Stat.new(fname).ctime.strftime("%Y-%m-%d_%H-%M-%S")
   end
