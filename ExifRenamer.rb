@@ -67,14 +67,29 @@ end
 def setFileCreationTimeByFilename(fname, timeShift, force)
   return unless File.exist?(fname)
   basename = File.basename(fname)
-  if matched = /^(\d{4})$/.match(basename)
-    ctime = "01/02/#{matched[1]} 12:00:00"
-  elsif matched = /(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})/.match(basename)
-    ctime = "#{matched[2]}/#{matched[3]}/#{matched[1]} #{matched[4]}:#{matched[5]}:#{matched[6]}"
+  case Gem::Platform.local.os
+  when "drawin" then
+    if matched = /^(\d{4})$/.match(basename)
+      ctime = "01/02/#{matched[1]} 12:00:00"
+    elsif matched = /(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})/.match(basename)
+      ctime = "#{matched[2]}/#{matched[3]}/#{matched[1]} #{matched[4]}:#{matched[5]}:#{matched[6]}"
+    else
+      return
+    end
+    cmd = "setfile -d \"#{ctime}\" \"#{fname}\"; setfile -m \"#{ctime}\" \"#{fname}\""
+  when "mingw32" then
+    if matched = /^(\d{4})$/.match(basename)
+      ctime = "#{matched[1]}/01/02 12:00:00"
+    elsif matched = /(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})/.match(basename)
+      ctime = "#{matched[1]}/#{matched[2]}/#{matched[3]} #{matched[4]}:#{matched[5]}:#{matched[6]}"
+    else
+      return
+    end
+    shell = "powershell -NoProfile -ExecutionPolicy Unrestricted"
+    cmd = "#{shell} \"Set-ItemProperty \'#{fname}\' -name CreationTime -value \'#{ctime}\'; Set-ItemProperty \'#{fname}\' -name LastWriteTime -value \'#{ctime}\';" + "\""
   else
     return
   end
-  cmd = "setfile -d \"#{ctime}\" \"#{fname}\"; setfile -m \"#{ctime}\" \"#{fname}\""
   echo(cmd)
   system(cmd) unless $DRYRUN
 end
