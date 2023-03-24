@@ -19,7 +19,6 @@ def echo(message = "")
 end
 
 DATE_FORMAT="%Y-%m-%d_%H-%M-%S"
-DATE_REGEX=/(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})/
 TAG_CREATE="CreateDate"
 TAG_DEFAULT="DateTimeOriginal"
 TAG_IMOVIE="CreationDate-jpn-JP"
@@ -68,18 +67,22 @@ end
 def setFileCreationTimeByFilename(fname, timeShift, force)
   return unless File.exist?(fname)
   basename = File.basename(fname)
-  if matched = DATE_REGEX.match(basename)
+  if matched = /^(\d{4})$/.match(basename)
+    ctime = "01/02/#{matched[1]} 12:00:00"
+  elsif matched = /(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})/.match(basename)
     ctime = "#{matched[2]}/#{matched[3]}/#{matched[1]} #{matched[4]}:#{matched[5]}:#{matched[6]}"
-    cmd = "setfile -d \"#{ctime}\" \"#{fname}\"; setfile -m \"#{ctime}\" \"#{fname}\""
-    echo(cmd)
-    system(cmd) unless $DRYRUN
+  else
+    return
   end
+  cmd = "setfile -d \"#{ctime}\" \"#{fname}\"; setfile -m \"#{ctime}\" \"#{fname}\""
+  echo(cmd)
+  system(cmd) unless $DRYRUN
 end
 
 OptionParser.new do |opt|
   args = {}
   begin
-    opt.on("-d","--dry-run","do not actually change") {|a| $DRYRUN=true }
+    opt.on("-D","--dry-run","do not actually change") {|a| $DRYRUN=true }
     opt.on("-q","--quiet","quiet(less output)") {|a| $QUIET=true }
     opt.on("-c","--ctime","set file creation time by filename") {|a| args[:command] = :ctime }
     opt.on("-m","--move","move file by EXIF #{TAG_DEFAULT} Info") {|a| args[:command] = :move }
