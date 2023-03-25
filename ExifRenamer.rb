@@ -73,7 +73,7 @@ def setFileCreationTimeByFilename(fname, timeShift, force)
   return unless File.exist?(fname)
   basename = File.basename(fname)
   case Gem::Platform.local.os
-  when "drawin" then
+  when "darwin" then
     if matched = /^(\d{4})$/.match(basename)
       ctime = "01/02/#{matched[1]} 12:00:00"
     elsif matched = /(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})/.match(basename)
