@@ -20,6 +20,7 @@ end
 
 DATE_FORMAT="%Y-%m-%d_%H-%M-%S"
 TAG_CREATE="CreateDate"
+TAG_MODIFY="ModifyDate"
 TAG_DEFAULT="DateTimeOriginal"
 TAG_IMOVIE="CreationDate-jpn-JP"
 TAG_MP4="MediaCreateDate"
@@ -32,7 +33,9 @@ def moveFilenameByTag(fname, timeShift, force)
   return unless File.exist?(fname)
   exiftool = "exiftool -#{TAG_DEFAULT} -#{TAG_IMOVIE} -#{TAG_MP4} -s3 -d '#{DATE_FORMAT}' -globalTimeShift #{timeShift||0} \"#{fname}\"|head -1"
   # echo exiftool
-  dateOrg = open("|#{exiftool}").read.gsub(/[^\d\-_]/,'')
+  io = open("|#{exiftool}")
+  dateOrg = io.read.gsub(/[^\d\-_]/,'')
+  io.close
   if dateOrg.empty?
     dateOrg = File::Stat.new(fname).ctime.strftime("%Y-%m-%d_%H-%M-%S")
   end
@@ -52,13 +55,15 @@ def writeTagByFilename(fname, timeShift, force)
   return unless File.exist?(fname)
   exiftool = "exiftool -#{TAG_DEFAULT} -s3 -d '#{DATE_FORMAT}' -globalTimeShift #{timeShift||0} \"#{fname}\"|head -1"
   # echo exiftool
-  dateOrg = open("|#{exiftool}").read.sub(/\n/,'')
+  io = open("|#{exiftool}")
+  dateOrg = io.read.sub(/\n/,'')
+  io.close
   dirname = File.dirname(fname)
   basename = File.basename(fname)
   matched = basename.match(/(.*)\.(.*)/)
   baseDate, baseSuffix = matched[1..2] if matched
   if force || dateOrg != baseDate
-    cmd = "exiftool -d '#{DATE_FORMAT}' -#{TAG_DEFAULT}=\"#{baseDate}\" -#{TAG_CREATE}=\"#{baseDate}\" -overwrite_original \"#{fname}\""
+    cmd = "exiftool -F -d '#{DATE_FORMAT}' -#{TAG_DEFAULT}=\"#{baseDate}\" -#{TAG_CREATE}=\"#{baseDate}\" -#{TAG_MODIFY}=\"#{baseDate}\" -overwrite_original \"#{fname}\""
     echo(cmd)
     system(cmd) unless $DRYRUN
   end
