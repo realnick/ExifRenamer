@@ -5,7 +5,6 @@
 
 require 'optparse'
 require 'time'
-require 'pry'
 
 def error_exit(message = "")
   STDERR.puts message
@@ -60,10 +59,20 @@ def writeTagByFilename(fname, timeShift, force)
   io.close
   dirname = File.dirname(fname)
   basename = File.basename(fname)
-  matched = basename.match(/(.*)\.(.*)/)
-  baseDate, baseSuffix = matched[1..2] if matched
+  if basename =~ /^S /
+    baseDate = Time.strptime(basename, "S %Y-%m-%d %H.%M.%S").strftime("%Y-%m-%d_%H-%M-%S")
+  else
+    matched = basename.match(/(.*)\.(.*)/)
+    baseDate, baseSuffix = matched[1..2] if matched
+  end
   if force || dateOrg != baseDate
     cmd = "exiftool -F -d '#{DATE_FORMAT}' -#{TAG_DEFAULT}=\"#{baseDate}\" -#{TAG_CREATE}=\"#{baseDate}\" -#{TAG_MODIFY}=\"#{baseDate}\" -overwrite_original \"#{fname}\""
+    echo(cmd)
+    system(cmd) unless $DRYRUN
+  end
+  if basename !~ /^#{baseDate}/
+    newFileName = ensureNewFileName(dirname, "#{baseDate}#{File.extname(fname).downcase}")
+    cmd = "mv \"#{fname}\" \"#{newFileName}\""
     echo(cmd)
     system(cmd) unless $DRYRUN
   end
