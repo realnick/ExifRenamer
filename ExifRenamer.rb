@@ -23,6 +23,7 @@ TAG_MODIFY="ModifyDate"
 TAG_DEFAULT="DateTimeOriginal"
 TAG_IMOVIE="CreationDate-jpn-JP"
 TAG_MP4="MediaCreateDate"
+CAPTURE_NAME=`defaults read com.apple.screencapture name`.chomp
 
 def ensureNewFileName(dirname, fname)
   return File.join(dirname, fname)
@@ -59,8 +60,8 @@ def writeTagByFilename(fname, timeShift, force)
   io.close
   dirname = File.dirname(fname)
   basename = File.basename(fname)
-  if basename =~ /^S /
-    baseDate = Time.strptime(basename, "S %Y-%m-%d %H.%M.%S").strftime("%Y-%m-%d_%H-%M-%S")
+  if basename =~ /^#{CAPTURE_NAME} /
+    baseDate = Time.strptime(basename, "#{CAPTURE_NAME} %Y-%m-%d %H.%M.%S").strftime("%Y-%m-%d_%H-%M-%S")
   else
     matched = basename.match(/(.*)\.(.*)/)
     baseDate, baseSuffix = matched[1..2] if matched
