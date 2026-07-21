@@ -23,7 +23,17 @@ TAG_MODIFY="ModifyDate"
 TAG_DEFAULT="DateTimeOriginal"
 TAG_IMOVIE="CreationDate-jpn-JP"
 TAG_MP4="MediaCreateDate"
-CAPTURE_NAME=`defaults read com.apple.screencapture name`.chomp
+CAPTURE_NAME = case Gem::Platform.local.os
+when "darwin"
+  begin
+    name = `defaults read com.apple.screencapture name`.chomp
+    name.empty? ? "Screenshot" : name
+  rescue StandardError
+    "Screenshot"
+  end
+else
+  "Screenshot"
+end
 
 def ensureNewFileName(dirname, fname)
   return File.join(dirname, fname)
@@ -102,6 +112,16 @@ def setFileCreationTimeByFilename(fname, timeShift, force)
     end
     shell = "powershell -NoProfile -ExecutionPolicy Unrestricted"
     cmd = "#{shell} \"Set-ItemProperty \'#{fname}\' -name CreationTime -value \'#{ctime}\'; Set-ItemProperty \'#{fname}\' -name LastWriteTime -value \'#{ctime}\';" + "\""
+  when "linux" then
+    if matched = /^(\d{4})$/.match(basename)
+      ctime = "#{matched[1]}-01-02 12:00:00"
+    elsif matched = /(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})/.match(basename)
+      ctime = "#{matched[1]}-#{matched[2]}-#{matched[3]} #{matched[4]}:#{matched[5]}:#{matched[6]}"
+    else
+      return
+    end
+    # Linux has no settable file birthtime; this only updates mtime/atime.
+    cmd = "touch -d \"#{ctime}\" \"#{fname}\""
   else
     return
   end
