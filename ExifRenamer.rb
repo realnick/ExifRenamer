@@ -35,8 +35,42 @@ else
   "Screenshot"
 end
 
-def ensureNewFileName(dirname, fname)
-  return File.join(dirname, fname)
+def exiftool_installed?
+  if Gem::Platform.local.os == "mingw32"
+    system("where exiftool > NUL 2>&1")
+  else
+    system("which exiftool > /dev/null 2>&1")
+  end
+end
+
+def check_exiftool!
+  return if exiftool_installed?
+  message = case Gem::Platform.local.os
+            when "darwin"
+              "exiftool not found. Install it with:\n  brew install exiftool"
+            when "linux"
+              "exiftool not found. Install it with:\n  Debian/Ubuntu: sudo apt install libimage-exiftool-perl\n  Fedora/RHEL: sudo dnf install perl-Image-ExifTool"
+            when "mingw32"
+              "exiftool not found. Install it with:\n  choco install exiftool\n  or download the Windows build from https://exiftool.org/, rename exiftool(-k).exe to exiftool.exe, and place it in a folder on your PATH."
+            else
+              "exiftool not found. Install it from https://exiftool.org/"
+            end
+  error_exit(message)
+end
+
+def ensureNewFileName(dirname, fname, srcPath = nil)
+  candidate = File.join(dirname, fname)
+  return candidate if srcPath && File.exist?(candidate) && File.identical?(candidate, srcPath)
+  return candidate unless File.exist?(candidate)
+
+  ext = File.extname(fname)
+  base = fname.chomp(ext)
+  n = 2
+  loop do
+    alt = File.join(dirname, "#{base}_#{n}#{ext}")
+    return alt unless File.exist?(alt)
+    n += 1
+  end
 end
 
 def moveFilenameByTag(fname, timeShift, force)
@@ -52,9 +86,10 @@ def moveFilenameByTag(fname, timeShift, force)
   dirname = File.dirname(fname)
   basename = File.basename(fname)
   matched = basename.match(/(.*)\.(.*)/)
-  baseDate, baseSuffix = matched[1..2] if matched
-  if force || dateOrg != baseDate
-    newFileName = ensureNewFileName(dirname, "#{dateOrg}#{File.extname(fname).downcase}")
+  baseDate = matched[1] if matched
+  baseDateForCompare = baseDate&.sub(/_\d+\z/, '')
+  if force || dateOrg != baseDateForCompare
+    newFileName = ensureNewFileName(dirname, "#{dateOrg}#{File.extname(fname).downcase}", fname)
     cmd = "mv \"#{fname}\" \"#{newFileName}\""
     echo(cmd)
     system(cmd) unless $DRYRUN
@@ -74,7 +109,7 @@ def writeTagByFilename(fname, timeShift, force)
     baseDate = Time.strptime(basename, "#{CAPTURE_NAME} %Y-%m-%d %H.%M.%S").strftime("%Y-%m-%d_%H-%M-%S")
   else
     matched = basename.match(/(.*)\.(.*)/)
-    baseDate, baseSuffix = matched[1..2] if matched
+    baseDate = matched[1] if matched
   end
   if force || dateOrg != baseDate
     cmd = "exiftool -F -d '#{DATE_FORMAT}' -#{TAG_DEFAULT}=\"#{baseDate}\" -#{TAG_CREATE}=\"#{baseDate}\" -#{TAG_MODIFY}=\"#{baseDate}\" -overwrite_original \"#{fname}\""
@@ -82,7 +117,7 @@ def writeTagByFilename(fname, timeShift, force)
     system(cmd) unless $DRYRUN
   end
   if basename !~ /^#{baseDate}/
-    newFileName = ensureNewFileName(dirname, "#{baseDate}#{File.extname(fname).downcase}")
+    newFileName = ensureNewFileName(dirname, "#{baseDate}#{File.extname(fname).downcase}", fname)
     cmd = "mv \"#{fname}\" \"#{newFileName}\""
     echo(cmd)
     system(cmd) unless $DRYRUN
@@ -145,8 +180,10 @@ OptionParser.new do |opt|
     when args[:command] == :ctime
       command = method(:setFileCreationTimeByFilename)
     when args[:command] == :move
+      check_exiftool!
       command = method(:moveFilenameByTag)
     when args[:command] == :write
+      check_exiftool!
       command = method(:writeTagByFilename)
     else
       raise OptionParser::MissingArgument, "Specify -c or -m or -w"
@@ -163,4 +200,3 @@ OptionParser.new do |opt|
     error_exit([e.message, opt.to_s].join("\n"))
   end
 end
-
