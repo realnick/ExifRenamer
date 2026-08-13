@@ -105,8 +105,11 @@ def writeTagByFilename(fname, timeShift, force)
   io.close
   dirname = File.dirname(fname)
   basename = File.basename(fname)
-  if basename =~ /^#{CAPTURE_NAME} /
-    baseDate = Time.strptime(basename, "#{CAPTURE_NAME} %Y-%m-%d %H.%M.%S").strftime("%Y-%m-%d_%H-%M-%S")
+  capture_names = [CAPTURE_NAME, "スクリーンショット"].uniq.map { |n| Regexp.escape(n) }.join("|")
+  if matched = basename.match(/^(?:#{capture_names}) (\d{4}-\d{2}-\d{2}) (\d{2})\.(\d{2})\.(\d{2})/)
+    baseDate = "#{matched[1]}_#{matched[2]}-#{matched[3]}-#{matched[4]}"
+  elsif matched = basename.match(/^(?:#{capture_names}) (\d{4}-\d{2}-\d{2}) (\d{2})(\d{2})(\d{2})/)
+    baseDate = "#{matched[1]}_#{matched[2]}-#{matched[3]}-#{matched[4]}"
   else
     matched = basename.match(/(.*)\.(.*)/)
     baseDate = matched[1] if matched
