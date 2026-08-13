@@ -36,7 +36,7 @@ else
 end
 
 def exiftool_installed?
-  if Gem::Platform.local.os == "mingw32"
+  if %w[mingw32 mingw].include?(Gem::Platform.local.os)
     system("where exiftool > NUL 2>&1")
   else
     system("which exiftool > /dev/null 2>&1")
@@ -50,7 +50,7 @@ def check_exiftool!
               "exiftool not found. Install it with:\n  brew install exiftool"
             when "linux"
               "exiftool not found. Install it with:\n  Debian/Ubuntu: sudo apt install libimage-exiftool-perl\n  Fedora/RHEL: sudo dnf install perl-Image-ExifTool"
-            when "mingw32"
+            when "mingw32", "mingw"
               "exiftool not found. Install it with:\n  choco install exiftool\n  or download the Windows build from https://exiftool.org/, rename exiftool(-k).exe to exiftool.exe, and place it in a folder on your PATH."
             else
               "exiftool not found. Install it from https://exiftool.org/"
@@ -140,7 +140,7 @@ def setFileCreationTimeByFilename(fname, timeShift, force)
       return
     end
     cmd = "setfile -d \"#{ctime}\" \"#{fname}\"; setfile -m \"#{ctime}\" \"#{fname}\""
-  when "mingw32" then
+  when "mingw32", "mingw" then
     if matched = /^(\d{4})$/.match(basename)
       ctime = "#{matched[1]}/01/02 12:00:00"
     elsif matched = /(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})/.match(basename)
